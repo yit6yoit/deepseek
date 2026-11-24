@@ -1,0 +1,1530 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DeepSeek V4 Studio — 100% Local BYOK Client</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Marked.js for Markdown Rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <!-- Highlight.js for Code Syntax Highlighting -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" id="hljs-theme" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#eef4ff',
+              100: '#d9e6ff',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+            }
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    /* Custom Scrollbars & Markdown Formatting */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.3);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(148, 163, 184, 0.5);
+    }
+
+    .prose-custom p { margin-bottom: 0.75rem; line-height: 1.65; }
+    .prose-custom p:last-child { margin-bottom: 0; }
+    .prose-custom ul, .prose-custom ol { margin: 0.5rem 0 0.75rem 1.4rem; }
+    .prose-custom ul { list-style-type: disc; }
+    .prose-custom ol { list-style-type: decimal; }
+    .prose-custom li { margin-bottom: 0.25rem; }
+    .prose-custom h1, .prose-custom h2, .prose-custom h3 {
+      font-weight: 700;
+      margin-top: 1.1rem;
+      margin-bottom: 0.5rem;
+    }
+    .prose-custom h1 { font-size: 1.35rem; }
+    .prose-custom h2 { font-size: 1.15rem; }
+    .prose-custom h3 { font-size: 1.02rem; }
+    .prose-custom pre {
+      position: relative;
+      border-radius: 0.65rem;
+      overflow-x: auto;
+      margin: 0.75rem 0;
+      background: #0d1117;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+    }
+    .prose-custom code:not(pre code) {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85em;
+      padding: 0.15rem 0.35rem;
+      border-radius: 0.35rem;
+      background: rgba(148, 163, 184, 0.18);
+    }
+    .prose-custom blockquote {
+      border-left: 3px solid #3b82f6;
+      padding-left: 0.85rem;
+      opacity: 0.85;
+      margin: 0.65rem 0;
+    }
+    .prose-custom table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0.75rem 0;
+      font-size: 0.875rem;
+    }
+    .prose-custom th, .prose-custom td {
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      padding: 0.45rem 0.65rem;
+      text-align: left;
+    }
+    .prose-custom th {
+      background: rgba(148, 163, 184, 0.12);
+    }
+
+    @keyframes pulseDot {
+      0%, 100% { opacity: 0.3; transform: scale(0.9); }
+      50% { opacity: 1; transform: scale(1.1); }
+    }
+    .typing-dot {
+      animation: pulseDot 1.2s infinite ease-in-out;
+    }
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 font-sans antialiased h-screen overflow-hidden flex flex-col">
+
+  <!-- Toast Notification Banner -->
+  <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- Custom Confirmation Modal (No native alert/confirm) -->
+  <div id="confirm-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl">
+      <h3 id="confirm-title" class="text-lg font-bold mb-2">Confirm Action</h3>
+      <p id="confirm-message" class="text-sm text-slate-600 dark:text-slate-400 mb-6"></p>
+      <div class="flex justify-end gap-3">
+        <button id="confirm-cancel-btn" class="px-4 py-2 rounded-xl text-sm font-medium bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition">Cancel</button>
+        <button id="confirm-ok-btn" class="px-4 py-2 rounded-xl text-sm font-medium bg-red-600 hover:bg-red-700 text-white transition">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings & Local Data Modal -->
+  <div id="settings-modal" class="fixed inset-0 z-40 hidden items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4 mb-5">
+        <div>
+          <h2 class="text-lg font-bold flex items-center gap-2">
+            <span>Workspace Settings & Local Storage</span>
+            <span class="text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">100% Client-Side</span>
+          </h2>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">All keys, chats, and usage logs stay strictly inside your browser's localStorage.</p>
+        </div>
+        <button onclick="closeSettingsModal()" class="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500">✕</button>
+      </div>
+
+      <div class="space-y-5">
+        <!-- API Key & Account Balance -->
+        <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 space-y-3">
+          <div class="flex items-center justify-between">
+            <label class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">DeepSeek API Key</label>
+            <button onclick="checkAccountBalance()" id="check-balance-btn" class="text-xs font-medium px-3 py-1 rounded-lg bg-brand-600/15 text-brand-600 dark:text-brand-400 hover:bg-brand-600/25 transition">
+              Check Live Balance
+            </button>
+          </div>
+          <div class="flex gap-2">
+            <input id="modal-api-key" type="password" placeholder="sk-..." class="flex-1 px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500" />
+            <button onclick="toggleKeyVisibility()" class="px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-800">Show</button>
+          </div>
+          <div id="balance-display" class="hidden text-xs p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-emerald-700 dark:text-emerald-300 font-mono"></div>
+        </div>
+
+        <!-- Custom Base URL & Custom Model ID -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">API Base URL</label>
+            <input id="setting-base-url" type="text" value="https://api.deepseek.com" class="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">Custom Model Override (Optional)</label>
+            <input id="setting-custom-model" type="text" placeholder="e.g. deepseek-v4-pro" class="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500" />
+          </div>
+        </div>
+
+        <!-- System Prompt -->
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">Default System Prompt</label>
+          <textarea id="setting-system-prompt" rows="3" placeholder="You are a helpful, precise AI assistant." class="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"></textarea>
+        </div>
+
+        <!-- Generation Parameters & Pricing Window -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">Temperature (<span id="temp-val">1.0</span>)</label>
+            <input id="setting-temperature" type="range" min="0" max="2" step="0.1" value="1.0" oninput="document.getElementById('temp-val').textContent=this.value" class="w-full accent-brand-600" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">Max Output Tokens</label>
+            <input id="setting-max-tokens" type="number" min="256" max="384000" step="256" value="16384" class="w-full px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-sm font-mono" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">Pricing Rate Mode</label>
+            <select id="setting-rate-mode" class="w-full px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-sm">
+              <option value="auto">Auto (UTC Peak / Off-Peak)</option>
+              <option value="peak">Force Peak Rate (1.0x)</option>
+              <option value="offpeak">Force Off-Peak (0.5x)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- All-Time Local Telemetry Summary -->
+        <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">All-Time Local Usage Ledger</span>
+            <button onclick="resetLifetimeStats()" class="text-xs text-amber-600 dark:text-amber-400 hover:underline">Reset Counters</button>
+          </div>
+          <div id="lifetime-stats-box" class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono"></div>
+        </div>
+
+        <!-- Local Storage Backup & Wipe Controls -->
+        <div class="border-t border-slate-200 dark:border-slate-800 pt-4 flex flex-wrap items-center justify-between gap-2">
+          <div class="flex flex-wrap gap-2">
+            <button onclick="exportLocalBackup()" class="px-3.5 py-2 rounded-xl text-xs font-medium bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition">
+              Export JSON Backup
+            </button>
+            <label class="px-3.5 py-2 rounded-xl text-xs font-medium bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer">
+              Import JSON
+              <input type="file" accept=".json" onchange="importLocalBackup(event)" class="hidden" />
+            </label>
+            <button onclick="downloadStandaloneApp()" class="px-3.5 py-2 rounded-xl text-xs font-medium bg-brand-600/15 text-brand-600 dark:text-brand-400 hover:bg-brand-600/25 transition">
+              Download Standalone HTML
+            </button>
+          </div>
+          <button onclick="confirmWipeAllData()" class="px-3.5 py-2 rounded-xl text-xs font-medium bg-red-600/15 text-red-600 dark:text-red-400 hover:bg-red-600/25 transition">
+            Wipe All Local Data
+          </button>
+        </div>
+      </div>
+
+      <div class="mt-6 flex justify-end">
+        <button onclick="saveSettingsFromModal()" class="px-5 py-2.5 rounded-xl text-sm font-semibold bg-brand-600 hover:bg-brand-700 text-white shadow-lg shadow-brand-600/20 transition">
+          Save Settings Locally
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Workspace Layout -->
+  <div class="flex flex-1 overflow-hidden">
+
+    <!-- Mobile Sidebar Backdrop -->
+    <div id="sidebar-backdrop" onclick="toggleSidebar(false)" class="fixed inset-0 bg-black/50 z-20 hidden lg:hidden"></div>
+
+    <!-- Left Sidebar: Conversations & Local Privacy Status -->
+    <aside id="sidebar" class="fixed lg:static inset-y-0 left-0 z-30 w-72 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col transform -translate-x-full lg:translate-x-0 transition-transform duration-200 ease-in-out">
+      <!-- Sidebar Header -->
+      <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shadow-md">
+            DS
+          </div>
+          <div>
+            <div class="font-bold text-sm leading-tight">DeepSeek V4 Studio</div>
+            <div class="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> 100% Local Storage
+            </div>
+          </div>
+        </div>
+        <button onclick="toggleSidebar(false)" class="lg:hidden p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500">✕</button>
+      </div>
+
+      <!-- New Chat Button -->
+      <div class="p-3">
+        <button onclick="createNewChat()" class="w-full py-2.5 px-4 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold flex items-center justify-center gap-2 shadow-sm transition">
+          <span>+</span> New Conversation
+        </button>
+      </div>
+
+      <!-- Conversation List -->
+      <div id="chat-list" class="flex-1 overflow-y-auto px-3 space-y-1"></div>
+
+      <!-- Sidebar Footer: Quick Key Entry & Cumulative Cost -->
+      <div class="p-3 border-t border-slate-200 dark:border-slate-800 space-y-2.5 bg-slate-50/70 dark:bg-slate-950/40">
+        <!-- Quick API Key Box -->
+        <div>
+          <div class="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 mb-1">
+            <span class="font-semibold">API Key (Local Only)</span>
+            <span id="key-status-badge" class="text-amber-500 font-medium">Not Set</span>
+          </div>
+          <input id="sidebar-api-key" type="password" placeholder="Paste sk-... key" onchange="updateApiKeyQuick(this.value)" class="w-full px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-brand-500" />
+        </div>
+
+        <!-- Session & All-Time Telemetry Pill -->
+        <div class="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[11px] font-mono space-y-1">
+          <div class="flex justify-between text-slate-500 dark:text-slate-400">
+            <span>Chat Tokens:</span>
+            <span id="chat-total-tokens" class="text-slate-900 dark:text-slate-100 font-semibold">0</span>
+          </div>
+          <div class="flex justify-between text-slate-500 dark:text-slate-400">
+            <span>Chat Est. Cost:</span>
+            <span id="chat-total-cost" class="text-emerald-600 dark:text-emerald-400 font-semibold">$0.00000</span>
+          </div>
+          <div class="flex justify-between text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800 pt-1">
+            <span>All-Time Est.:</span>
+            <span id="sidebar-lifetime-cost" class="text-slate-700 dark:text-slate-300">$0.00000</span>
+          </div>
+        </div>
+
+        <!-- Settings & Theme Bar -->
+        <div class="flex items-center gap-2">
+          <button onclick="openSettingsModal()" class="flex-1 py-2 px-3 rounded-xl bg-slate-200/70 dark:bg-slate-800 hover:bg-slate-300/70 dark:hover:bg-slate-700 text-xs font-medium transition flex items-center justify-center gap-1.5">
+            <span>⚙</span> Settings & Data
+          </button>
+          <button onclick="toggleTheme()" title="Toggle Light/Dark Mode" class="p-2 rounded-xl bg-slate-200/70 dark:bg-slate-800 hover:bg-slate-300/70 dark:hover:bg-slate-700 text-xs transition">
+            <span id="theme-icon">☀</span>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Right Main Panel: Top Controls, Chat Stream, Input Composer -->
+    <main class="flex-1 flex flex-col min-w-0 bg-slate-50 dark:bg-slate-950">
+
+      <!-- Top Model & Thinking Control Bar -->
+      <header class="bg-white/90 dark:bg-slate-900/90 backdrop-blur border-b border-slate-200 dark:border-slate-800 px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 z-10">
+        <div class="flex items-center gap-2 flex-wrap">
+          <button onclick="toggleSidebar(true)" class="lg:hidden p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm">☰</button>
+
+          <!-- Model Selector -->
+          <div class="flex items-center gap-1.5">
+            <select id="model-select" onchange="onModelChange()" class="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500">
+              <option value="deepseek-v4-pro">DeepSeek-V4-Pro (1.6T MoE • 1M Ctx)</option>
+              <option value="deepseek-flash">DeepSeek-V4.1-Flash (552B MoE • Vision)</option>
+              <option value="deepseek-chat">DeepSeek-Chat (Alias)</option>
+              <option value="deepseek-reasoner">DeepSeek-Reasoner (Alias)</option>
+            </select>
+            <button onclick="fetchAvailableModels()" id="refresh-models-btn" title="Discover live models from api.deepseek.com/models" class="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs transition">
+              ↻
+            </button>
+          </div>
+
+          <!-- Thinking Toggle -->
+          <label class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-medium cursor-pointer select-none">
+            <input id="thinking-toggle" type="checkbox" checked onchange="saveWorkspaceState()" class="accent-brand-600 rounded" />
+            <span>Thinking</span>
+          </label>
+
+          <!-- Reasoning Effort Selector -->
+          <select id="reasoning-effort" onchange="saveWorkspaceState()" title="Reasoning Effort" class="px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-medium focus:outline-none">
+            <option value="none">Effort: None</option>
+            <option value="low">Effort: Low</option>
+            <option value="high" selected>Effort: High</option>
+            <option value="max">Effort: Max</option>
+          </select>
+        </div>
+
+        <!-- Right Status Badges: Pricing Tier & Context Specs -->
+        <div class="flex items-center gap-2 text-[11px] font-mono">
+          <span id="pricing-window-badge" class="px-2.5 py-1 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+            Detecting UTC Rate...
+          </span>
+          <span id="model-spec-badge" class="hidden sm:inline-block px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+            1M Ctx • 384K Out
+          </span>
+        </div>
+      </header>
+
+      <!-- Messages Viewport -->
+      <div id="messages-container" class="flex-1 overflow-y-auto px-4 sm:px-6 py-6 space-y-6">
+        <!-- Empty Welcome Hero -->
+        <div id="welcome-screen" class="max-w-2xl mx-auto mt-8 text-center space-y-5">
+          <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-600 dark:text-emerald-400 text-xs font-semibold">
+            <span>🔒 Zero Server Storage • Direct Browser-to-DeepSeek API</span>
+          </div>
+          <h1 class="text-2xl sm:text-3xl font-bold tracking-tight">DeepSeek V4 Local Studio</h1>
+          <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+            Run <strong>DeepSeek-V4-Pro</strong> and <strong>DeepSeek-V4.1-Flash</strong> directly from your browser using your own API key. Inspect live chain-of-thought reasoning, cache hit/miss token breakdowns, TTFT latency, and real-time UTC peak/off-peak cost estimates.
+          </p>
+
+          <!-- Model Quick Cards -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left pt-2">
+            <div onclick="selectModelCard('deepseek-v4-pro')" class="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-brand-500 cursor-pointer transition shadow-sm">
+              <div class="flex items-center justify-between mb-1">
+                <span class="font-bold text-sm">DeepSeek-V4-Pro</span>
+                <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-blue-500/10 text-blue-500">1.6T MoE</span>
+              </div>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mb-2">Flagship reasoning & coding model. 1M context, 384K max output.</p>
+              <div class="text-[11px] font-mono text-slate-400">Peak: $0.044 hit / $1.32 miss / $3.96 out</div>
+            </div>
+            <div onclick="selectModelCard('deepseek-flash')" class="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-brand-500 cursor-pointer transition shadow-sm">
+              <div class="flex items-center justify-between mb-1">
+                <span class="font-bold text-sm">DeepSeek-V4.1-Flash</span>
+                <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-purple-500/10 text-purple-400">Vision + 552B</span>
+              </div>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mb-2">Ultra-fast multimodal model supporting image uploads & 1M context.</p>
+              <div class="text-[11px] font-mono text-slate-400">Peak: $0.006 hit / $0.30 miss / $1.20 out</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Input Composer -->
+      <div class="p-3 sm:p-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800">
+        <div class="max-w-4xl mx-auto">
+          <!-- Attached Image Preview Strip (for Vision-capable models) -->
+          <div id="image-preview-strip" class="hidden flex-wrap gap-2 mb-2.5"></div>
+
+          <div class="relative flex items-end gap-2 bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-2xl p-2 focus-within:ring-2 focus-within:ring-brand-500">
+            <!-- Image Upload Button (Visible when Flash / Vision model is selected) -->
+            <label id="attach-image-btn" title="Attach image (Supported on DeepSeek-V4.1-Flash)" class="p-2.5 rounded-xl text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-200/70 dark:hover:bg-slate-800 cursor-pointer transition">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <input id="image-file-input" type="file" accept="image/*" multiple onchange="handleImageFiles(event)" class="hidden" />
+            </label>
+
+            <textarea id="prompt-input" rows="1" placeholder="Message DeepSeek V4... (Shift+Enter for new line, paste images for V4.1-Flash)" onkeydown="handlePromptKeydown(event)" oninput="autoResizeTextarea(this)" onpaste="handlePaste(event)" class="flex-1 bg-transparent resize-none border-0 py-2 px-2 text-sm focus:outline-none max-h-48"></textarea>
+
+            <!-- Send / Stop Button -->
+            <button id="send-btn" onclick="handleSendOrStop()" class="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold transition flex items-center gap-1.5 shadow-sm">
+              <span id="send-btn-label">Send</span>
+            </button>
+          </div>
+
+          <div class="flex items-center justify-between text-[11px] text-slate-400 mt-1.5 px-1">
+            <span>Direct request to <code class="font-mono">api.deepseek.com</code> • Billed to your API key</span>
+            <span id="vision-hint" class="hidden text-purple-500 dark:text-purple-400 font-medium">Vision enabled for V4.1-Flash</span>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script>
+    /*************************************************************************
+     * 1. STATE & CONSTANTS (100% LOCALSTORAGE PERSISTENCE)
+     *************************************************************************/
+    const STORAGE_KEY = 'deepseek_v4_byok_workspace_v1';
+
+    // Official DeepSeek V4 Pricing per 1,000,000 tokens (Peak USD; Off-Peak is 0.5x)
+    const MODEL_CATALOG = {
+      'deepseek-v4-pro': {
+        label: 'DeepSeek-V4-Pro (1.6T MoE • 1M Ctx)',
+        specs: '1.6T MoE • 1M Ctx • 384K Out',
+        vision: false,
+        peakPricing: { cacheHit: 0.044, cacheMiss: 1.32, output: 3.96 }
+      },
+      'deepseek-flash': {
+        label: 'DeepSeek-V4.1-Flash (552B MoE • Vision)',
+        specs: '552B MoE • 1M Ctx • Vision',
+        vision: true,
+        peakPricing: { cacheHit: 0.006, cacheMiss: 0.30, output: 1.20 }
+      },
+      'deepseek-chat': {
+        label: 'DeepSeek-Chat (V4 Alias)',
+        specs: '1M Ctx • 384K Out',
+        vision: false,
+        peakPricing: { cacheHit: 0.044, cacheMiss: 1.32, output: 3.96 }
+      },
+      'deepseek-reasoner': {
+        label: 'DeepSeek-Reasoner (V4 Thinking Alias)',
+        specs: '1M Ctx • Reasoning',
+        vision: false,
+        peakPricing: { cacheHit: 0.044, cacheMiss: 1.32, output: 3.96 }
+      }
+    };
+
+    let state = {
+      apiKey: '',
+      baseUrl: 'https://api.deepseek.com',
+      customModel: '',
+      systemPrompt: 'You are a helpful, accurate, and concise AI assistant.',
+      temperature: 1.0,
+      maxTokens: 16384,
+      rateMode: 'auto', // 'auto' | 'peak' | 'offpeak'
+      selectedModel: 'deepseek-v4-pro',
+      thinkingEnabled: true,
+      reasoningEffort: 'high',
+      theme: 'dark',
+      discoveredModels: [],
+      chats: [],
+      activeChatId: null,
+      lifetimeStats: {
+        promptTokens: 0,
+        cacheHitTokens: 0,
+        cacheMissTokens: 0,
+        completionTokens: 0,
+        reasoningTokens: 0,
+        totalCostUsd: 0
+      }
+    };
+
+    let pendingImages = []; // Array of { name, dataUrl }
+    let activeAbortController = null;
+
+    /*************************************************************************
+     * 2. INITIALIZATION & STORAGE HELPERS
+     *************************************************************************/
+    window.addEventListener('DOMContentLoaded', () => {
+      loadWorkspaceState();
+      applyTheme(state.theme);
+      configureMarkdown();
+      updatePricingWindowBadge();
+      setInterval(updatePricingWindowBadge, 60000);
+
+      if (!state.chats || state.chats.length === 0) {
+        createNewChat(false);
+      } else if (!state.activeChatId || !state.chats.find(c => c.id === state.activeChatId)) {
+        state.activeChatId = state.chats[0].id;
+      }
+
+      syncControlsFromState();
+      renderChatList();
+      renderActiveChat();
+      updateTelemetryDisplays();
+    });
+
+    function loadWorkspaceState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          state = {
+            ...state,
+            ...parsed,
+            lifetimeStats: { ...state.lifetimeStats, ...(parsed.lifetimeStats || {}) }
+          };
+        }
+      } catch (err) {
+        console.error('Failed to read localStorage:', err);
+      }
+    }
+
+    function saveWorkspaceState() {
+      try {
+        state.selectedModel = document.getElementById('model-select').value;
+        state.thinkingEnabled = document.getElementById('thinking-toggle').checked;
+        state.reasoningEffort = document.getElementById('reasoning-effort').value;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch (err) {
+        showToast('Storage warning: ' + err.message, 'error');
+      }
+    }
+
+    function syncControlsFromState() {
+      document.getElementById('sidebar-api-key').value = state.apiKey || '';
+      document.getElementById('modal-api-key').value = state.apiKey || '';
+      updateKeyStatusBadge();
+
+      document.getElementById('setting-base-url').value = state.baseUrl || 'https://api.deepseek.com';
+      document.getElementById('setting-custom-model').value = state.customModel || '';
+      document.getElementById('setting-system-prompt').value = state.systemPrompt || '';
+      document.getElementById('setting-temperature').value = state.temperature ?? 1.0;
+      document.getElementById('temp-val').textContent = state.temperature ?? 1.0;
+      document.getElementById('setting-max-tokens').value = state.maxTokens || 16384;
+      document.getElementById('setting-rate-mode').value = state.rateMode || 'auto';
+
+      const modelSelect = document.getElementById('model-select');
+      // Populate any dynamically discovered models
+      if (Array.isArray(state.discoveredModels)) {
+        state.discoveredModels.forEach(id => {
+          if (!Array.from(modelSelect.options).some(opt => opt.value === id)) {
+            const opt = document.createElement('option');
+            opt.value = id;
+            opt.textContent = `${id} (Discovered)`;
+            modelSelect.appendChild(opt);
+          }
+        });
+      }
+      if (Array.from(modelSelect.options).some(opt => opt.value === state.selectedModel)) {
+        modelSelect.value = state.selectedModel;
+      }
+
+      document.getElementById('thinking-toggle').checked = !!state.thinkingEnabled;
+      document.getElementById('reasoning-effort').value = state.reasoningEffort || 'high';
+      onModelChange(false);
+    }
+
+    function updateApiKeyQuick(val) {
+      state.apiKey = val.trim();
+      document.getElementById('modal-api-key').value = state.apiKey;
+      updateKeyStatusBadge();
+      saveWorkspaceState();
+      if (state.apiKey) {
+        showToast('API key saved locally in browser storage.', 'success');
+      }
+    }
+
+    function updateKeyStatusBadge() {
+      const badge = document.getElementById('key-status-badge');
+      if (state.apiKey && state.apiKey.length > 8) {
+        badge.textContent = 'Saved Locally ✓';
+        badge.className = 'text-emerald-500 font-medium';
+      } else {
+        badge.textContent = 'Not Set';
+        badge.className = 'text-amber-500 font-medium';
+      }
+    }
+
+    /*************************************************************************
+     * 3. PRICING & UTC PEAK/OFF-PEAK WINDOW CALCULATOR
+     *************************************************************************/
+    function isOffPeakUtcNow() {
+      if (state.rateMode === 'offpeak') return true;
+      if (state.rateMode === 'peak') return false;
+
+      // Peak windows: Mon–Fri 01:00–04:00 UTC and 06:00–10:00 UTC
+      const now = new Date();
+      const day = now.getUTCDay(); // 0 = Sun, 6 = Sat
+      const hour = now.getUTCHours();
+
+      if (day === 0 || day === 6) return true; // Weekends are off-peak
+      const inMorningPeak = hour >= 1 && hour < 4;
+      const inMiddayPeak = hour >= 6 && hour < 10;
+      return !(inMorningPeak || inMiddayPeak);
+    }
+
+    function updatePricingWindowBadge() {
+      const offPeak = isOffPeakUtcNow();
+      const badge = document.getElementById('pricing-window-badge');
+      if (offPeak) {
+        badge.textContent = 'Off-Peak Rate (0.5x)';
+        badge.className = 'px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20';
+      } else {
+        badge.textContent = 'Peak UTC Rate (1.0x)';
+        badge.className = 'px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20';
+      }
+    }
+
+    function calculateMessageCost(modelId, usage) {
+      if (!usage) return 0;
+      const catalogEntry = MODEL_CATALOG[modelId] || MODEL_CATALOG['deepseek-v4-pro'];
+      const multiplier = isOffPeakUtcNow() ? 0.5 : 1.0;
+
+      const promptTokens = usage.prompt_tokens || 0;
+      const cacheHit = usage.prompt_cache_hit_tokens ?? 0;
+      const cacheMiss = usage.prompt_cache_miss_tokens ?? Math.max(0, promptTokens - cacheHit);
+      const completionTokens = usage.completion_tokens || 0;
+
+      const hitCost = (cacheHit / 1_000_000) * catalogEntry.peakPricing.cacheHit * multiplier;
+      const missCost = (cacheMiss / 1_000_000) * catalogEntry.peakPricing.cacheMiss * multiplier;
+      const outCost = (completionTokens / 1_000_000) * catalogEntry.peakPricing.output * multiplier;
+
+      return hitCost + missCost + outCost;
+    }
+
+    /*************************************************************************
+     * 4. MODEL SELECTION, DISCOVERY & VISION ATTACHMENT
+     *************************************************************************/
+    function getEffectiveModelId() {
+      return (state.customModel && state.customModel.trim())
+        ? state.customModel.trim()
+        : document.getElementById('model-select').value;
+    }
+
+    function onModelChange(shouldSave = true) {
+      const modelId = getEffectiveModelId();
+      const info = MODEL_CATALOG[modelId] || { specs: 'Custom Model', vision: modelId.includes('flash') };
+      document.getElementById('model-spec-badge').textContent = info.specs;
+
+      const attachBtn = document.getElementById('attach-image-btn');
+      const visionHint = document.getElementById('vision-hint');
+      if (info.vision) {
+        attachBtn.classList.remove('opacity-40');
+        visionHint.classList.remove('hidden');
+      } else {
+        attachBtn.classList.add('opacity-40');
+        visionHint.classList.add('hidden');
+      }
+
+      if (shouldSave) saveWorkspaceState();
+    }
+
+    function selectModelCard(modelId) {
+      document.getElementById('model-select').value = modelId;
+      state.customModel = '';
+      document.getElementById('setting-custom-model').value = '';
+      onModelChange(true);
+      document.getElementById('prompt-input').focus();
+    }
+
+    async function fetchAvailableModels() {
+      if (!state.apiKey) {
+        showToast('Enter your DeepSeek API key first to query live models.', 'error');
+        return;
+      }
+      const btn = document.getElementById('refresh-models-btn');
+      btn.textContent = '…';
+      try {
+        const res = await fetch(`${state.baseUrl.replace(/\/$/, '')}/models`, {
+          headers: { 'Authorization': `Bearer ${state.apiKey}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`);
+
+        const ids = (data.data || []).map(m => m.id);
+        state.discoveredModels = ids;
+        syncControlsFromState();
+        saveWorkspaceState();
+        showToast(`Discovered ${ids.length} models from DeepSeek API.`, 'success');
+      } catch (err) {
+        showToast('Model discovery failed: ' + err.message, 'error');
+      } finally {
+        btn.textContent = '↻';
+      }
+    }
+
+    async function checkAccountBalance() {
+      const key = document.getElementById('modal-api-key').value.trim() || state.apiKey;
+      const box = document.getElementById('balance-display');
+      if (!key) {
+        showToast('Please enter an API key first.', 'error');
+        return;
+      }
+      box.classList.remove('hidden');
+      box.textContent = 'Querying api.deepseek.com/user/balance...';
+      try {
+        const baseUrl = document.getElementById('setting-base-url').value.trim() || 'https://api.deepseek.com';
+        const res = await fetch(`${baseUrl.replace(/\/$/, '')}/user/balance`, {
+          headers: { 'Authorization': `Bearer ${key}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`);
+
+        const balances = (data.balance_infos || [])
+          .map(b => `${b.total_balance} ${b.currency} (Granted: ${b.granted_balance}, Topped-up: ${b.topped_up_balance})`)
+          .join(' | ');
+        box.textContent = `Available: ${data.is_available ? 'Yes' : 'No'} • ${balances || JSON.stringify(data)}`;
+      } catch (err) {
+        box.textContent = 'Error checking balance: ' + err.message;
+      }
+    }
+
+    function handleImageFiles(event) {
+      const files = Array.from(event.target.files || []);
+      processFilesToDataUrls(files);
+      event.target.value = '';
+    }
+
+    function handlePaste(event) {
+      const items = Array.from(event.clipboardData?.items || []);
+      const imageFiles = items
+        .filter(item => item.type.startsWith('image/'))
+        .map(item => item.getAsFile())
+        .filter(Boolean);
+      if (imageFiles.length > 0) {
+        processFilesToDataUrls(imageFiles);
+      }
+    }
+
+    function processFilesToDataUrls(files) {
+      const modelId = getEffectiveModelId();
+      const info = MODEL_CATALOG[modelId] || { vision: modelId.includes('flash') };
+      if (!info.vision) {
+        showToast('Tip: Switch to DeepSeek-V4.1-Flash for vision/image inputs.', 'info');
+      }
+
+      files.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          pendingImages.push({ name: file.name || 'pasted-image.png', dataUrl: reader.result });
+          renderImagePreviews();
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function renderImagePreviews() {
+      const strip = document.getElementById('image-preview-strip');
+      if (pendingImages.length === 0) {
+        strip.classList.add('hidden');
+        strip.innerHTML = '';
+        return;
+      }
+      strip.classList.remove('hidden');
+      strip.classList.add('flex');
+      strip.innerHTML = pendingImages.map((img, idx) => `
+        <div class="relative group w-16 h-16 rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700">
+          <img src="${img.dataUrl}" alt="${escapeHtml(img.name)}" class="w-full h-full object-cover" />
+          <button onclick="removePendingImage(${idx})" class="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/75 text-white text-xs flex items-center justify-center">✕</button>
+        </div>
+      `).join('');
+    }
+
+    function removePendingImage(index) {
+      pendingImages.splice(index, 1);
+      renderImagePreviews();
+    }
+
+    /*************************************************************************
+     * 5. CHAT THREAD MANAGEMENT
+     *************************************************************************/
+    function getActiveChat() {
+      return state.chats.find(c => c.id === state.activeChatId);
+    }
+
+    function createNewChat(shouldRender = true) {
+      const newChat = {
+        id: 'chat_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+        title: 'New Conversation',
+        createdAt: Date.now(),
+        messages: []
+      };
+      state.chats.unshift(newChat);
+      state.activeChatId = newChat.id;
+      saveWorkspaceState();
+      if (shouldRender) {
+        renderChatList();
+        renderActiveChat();
+        updateTelemetryDisplays();
+        toggleSidebar(false);
+      }
+    }
+
+    function switchChat(chatId) {
+      if (activeAbortController) {
+        activeAbortController.abort();
+        activeAbortController = null;
+      }
+      state.activeChatId = chatId;
+      saveWorkspaceState();
+      renderChatList();
+      renderActiveChat();
+      updateTelemetryDisplays();
+      toggleSidebar(false);
+    }
+
+    function deleteChat(event, chatId) {
+      event.stopPropagation();
+      state.chats = state.chats.filter(c => c.id !== chatId);
+      if (state.chats.length === 0) {
+        createNewChat(false);
+      } else if (state.activeChatId === chatId) {
+        state.activeChatId = state.chats[0].id;
+      }
+      saveWorkspaceState();
+      renderChatList();
+      renderActiveChat();
+      updateTelemetryDisplays();
+    }
+
+    function renderChatList() {
+      const listEl = document.getElementById('chat-list');
+      listEl.innerHTML = state.chats.map(chat => {
+        const isActive = chat.id === state.activeChatId;
+        const msgCount = chat.messages.length;
+        return `
+          <div onclick="switchChat('${chat.id}')" class="group flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition ${
+            isActive
+              ? 'bg-brand-600/15 text-brand-700 dark:text-brand-300 font-semibold border border-brand-500/30'
+              : 'hover:bg-slate-100 dark:hover:bg-slate-800/70 text-slate-700 dark:text-slate-300'
+          }">
+            <div class="truncate pr-2">
+              <div class="text-xs truncate">${escapeHtml(chat.title)}</div>
+              <div class="text-[10px] text-slate-400 font-normal">${msgCount} message${msgCount === 1 ? '' : 's'}</div>
+            </div>
+            <button onclick="deleteChat(event, '${chat.id}')" title="Delete conversation" class="opacity-0 group-hover:opacity-100 p-1 rounded-lg hover:bg-red-500/20 text-slate-400 hover:text-red-500 text-xs transition">
+              ✕
+            </button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    /*************************************************************************
+     * 6. STREAMING API CALL & TELEMETRY TRACKING
+     *************************************************************************/
+    function handlePromptKeydown(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        handleSendOrStop();
+      }
+    }
+
+    function autoResizeTextarea(el) {
+      el.style.height = 'auto';
+      el.style.height = Math.min(el.scrollHeight, 192) + 'px';
+    }
+
+    function handleSendOrStop() {
+      if (activeAbortController) {
+        activeAbortController.abort();
+        activeAbortController = null;
+        setStreamingUiState(false);
+        return;
+      }
+      sendUserMessage();
+    }
+
+    function setStreamingUiState(isStreaming) {
+      const btn = document.getElementById('send-btn');
+      const label = document.getElementById('send-btn-label');
+      if (isStreaming) {
+        btn.classList.remove('bg-brand-600', 'hover:bg-brand-700');
+        btn.classList.add('bg-red-600', 'hover:bg-red-700');
+        label.textContent = 'Stop';
+      } else {
+        btn.classList.remove('bg-red-600', 'hover:bg-red-700');
+        btn.classList.add('bg-brand-600', 'hover:bg-brand-700');
+        label.textContent = 'Send';
+      }
+    }
+
+    async function sendUserMessage() {
+      const inputEl = document.getElementById('prompt-input');
+      const promptText = inputEl.value.trim();
+      if (!promptText && pendingImages.length === 0) return;
+
+      if (!state.apiKey) {
+        showToast('Please paste your DeepSeek API key in the sidebar first.', 'error');
+        document.getElementById('sidebar-api-key').focus();
+        return;
+      }
+
+      const chat = getActiveChat();
+      const modelId = getEffectiveModelId();
+
+      // Update chat title from first user message
+      if (chat.messages.length === 0) {
+        chat.title = (promptText || 'Image Prompt').slice(0, 42) + ((promptText.length > 42) ? '…' : '');
+      }
+
+      // Add User Message
+      const userMsg = {
+        id: 'msg_' + Date.now(),
+        role: 'user',
+        content: promptText,
+        images: [...pendingImages],
+        timestamp: Date.now()
+      };
+      chat.messages.push(userMsg);
+
+      // Reset Composer
+      inputEl.value = '';
+      inputEl.style.height = 'auto';
+      pendingImages = [];
+      renderImagePreviews();
+
+      // Create Placeholder Assistant Message
+      const assistantMsg = {
+        id: 'msg_' + (Date.now() + 1),
+        role: 'assistant',
+        model: modelId,
+        reasoning: '',
+        content: '',
+        usage: null,
+        costUsd: 0,
+        metrics: {
+          ttftMs: null,
+          totalMs: null,
+          tokensPerSec: null
+        },
+        timestamp: Date.now()
+      };
+      chat.messages.push(assistantMsg);
+
+      saveWorkspaceState();
+      renderChatList();
+      renderActiveChat();
+
+      // Prepare API Payload
+      const apiMessages = [];
+      if (state.systemPrompt && state.systemPrompt.trim()) {
+        apiMessages.push({ role: 'system', content: state.systemPrompt.trim() });
+      }
+
+      // Build conversation history (excluding empty assistant placeholder)
+      for (let i = 0; i < chat.messages.length - 1; i++) {
+        const m = chat.messages[i];
+        if (m.role === 'user' && m.images && m.images.length > 0) {
+          const parts = [];
+          if (m.content) parts.push({ type: 'text', text: m.content });
+          m.images.forEach(img => {
+            parts.push({ type: 'image_url', image_url: { url: img.dataUrl } });
+          });
+          apiMessages.push({ role: 'user', content: parts });
+        } else {
+          apiMessages.push({ role: m.role, content: m.content || '' });
+        }
+      }
+
+      const payload = {
+        model: modelId,
+        messages: apiMessages,
+        stream: true,
+        stream_options: { include_usage: true },
+        max_tokens: Number(state.maxTokens) || 16384,
+        thinking: { type: state.thinkingEnabled ? 'enabled' : 'disabled' }
+      };
+
+      // Only send reasoning_effort if thinking is enabled and effort != none
+      if (state.thinkingEnabled && state.reasoningEffort && state.reasoningEffort !== 'none') {
+        payload.reasoning_effort = state.reasoningEffort;
+      }
+
+      // Temperature is supported when thinking is disabled or on general endpoints
+      if (!state.thinkingEnabled && typeof state.temperature === 'number') {
+        payload.temperature = state.temperature;
+      }
+
+      activeAbortController = new AbortController();
+      setStreamingUiState(true);
+
+      const startTime = performance.now();
+      let firstTokenTime = null;
+
+      try {
+        const endpoint = `${state.baseUrl.replace(/\/$/, '')}/chat/completions`;
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${state.apiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload),
+          signal: activeAbortController.signal
+        });
+
+        if (!response.ok) {
+          let errMsg = `HTTP ${response.status}`;
+          try {
+            const errJson = await response.json();
+            errMsg = errJson.error?.message || JSON.stringify(errJson);
+          } catch (_) {}
+          throw new Error(errMsg);
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let sseBuffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          sseBuffer += decoder.decode(value, { stream: true });
+          const lines = sseBuffer.split('\n');
+          sseBuffer = lines.pop() || '';
+
+          for (const rawLine of lines) {
+            const line = rawLine.trim();
+            if (!line || !line.startsWith('data:')) continue;
+            const dataStr = line.slice(5).trim();
+            if (dataStr === '[DONE]') continue;
+
+            try {
+              const chunk = JSON.parse(dataStr);
+              const delta = chunk.choices?.[0]?.delta;
+
+              if (delta) {
+                if (delta.reasoning_content) {
+                  if (!firstTokenTime) firstTokenTime = performance.now();
+                  assistantMsg.reasoning += delta.reasoning_content;
+                }
+                if (delta.content) {
+                  if (!firstTokenTime) firstTokenTime = performance.now();
+                  assistantMsg.content += delta.content;
+                }
+                updateStreamingMessageDom(assistantMsg);
+              }
+
+              if (chunk.usage) {
+                assistantMsg.usage = chunk.usage;
+              }
+            } catch (parseErr) {
+              // Ignore partial keepalive comments
+            }
+          }
+        }
+      } catch (err) {
+        if (err.name === 'AbortError') {
+          assistantMsg.content += '\n\n*[Generation stopped by user]*';
+        } else {
+          assistantMsg.error = err.message;
+          showToast('DeepSeek API Error: ' + err.message, 'error');
+        }
+      } finally {
+        const endTime = performance.now();
+        const totalMs = Math.round(endTime - startTime);
+        const ttftMs = firstTokenTime ? Math.round(firstTokenTime - startTime) : totalMs;
+
+        assistantMsg.metrics.totalMs = totalMs;
+        assistantMsg.metrics.ttftMs = ttftMs;
+
+        if (assistantMsg.usage) {
+          const outTokens = assistantMsg.usage.completion_tokens || 0;
+          const genSeconds = Math.max(0.05, (endTime - (firstTokenTime || startTime)) / 1000);
+          assistantMsg.metrics.tokensPerSec = (outTokens / genSeconds).toFixed(1);
+
+          const cost = calculateMessageCost(modelId, assistantMsg.usage);
+          assistantMsg.costUsd = cost;
+
+          // Update All-Time Local Telemetry Ledger
+          const u = assistantMsg.usage;
+          const promptTok = u.prompt_tokens || 0;
+          const hitTok = u.prompt_cache_hit_tokens ?? 0;
+          const missTok = u.prompt_cache_miss_tokens ?? Math.max(0, promptTok - hitTok);
+          const compTok = u.completion_tokens || 0;
+          const reasTok = u.completion_tokens_details?.reasoning_tokens || 0;
+
+          state.lifetimeStats.promptTokens += promptTok;
+          state.lifetimeStats.cacheHitTokens += hitTok;
+          state.lifetimeStats.cacheMissTokens += missTok;
+          state.lifetimeStats.completionTokens += compTok;
+          state.lifetimeStats.reasoningTokens += reasTok;
+          state.lifetimeStats.totalCostUsd += cost;
+        }
+
+        activeAbortController = null;
+        setStreamingUiState(false);
+        saveWorkspaceState();
+        renderActiveChat();
+        updateTelemetryDisplays();
+      }
+    }
+
+    /*************************************************************************
+     * 7. RENDERING MESSAGES, REASONING BLOCKS & MARKDOWN
+     *************************************************************************/
+    function configureMarkdown() {
+      marked.setOptions({
+        breaks: true,
+        gfm: true,
+        highlight: function (code, lang) {
+          if (lang && hljs.getLanguage(lang)) {
+            return hljs.highlight(code, { language: lang }).value;
+          }
+          return hljs.highlightAuto(code).value;
+        }
+      });
+    }
+
+    function renderMarkdownWithCopyButtons(rawText) {
+      if (!rawText) return '';
+      const html = marked.parse(rawText);
+      const wrapper = document.createElement('div');
+      wrapper.innerHTML = html;
+
+      wrapper.querySelectorAll('pre').forEach(pre => {
+        const codeEl = pre.querySelector('code');
+        const codeText = codeEl ? codeEl.innerText : pre.innerText;
+        const btn = document.createElement('button');
+        btn.className = 'copy-code-btn absolute top-2 right-2 px-2 py-1 rounded-md text-[11px] font-mono bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 transition';
+        btn.textContent = 'Copy';
+        btn.setAttribute('data-code', encodeURIComponent(codeText));
+        pre.appendChild(btn);
+      });
+
+      return wrapper.innerHTML;
+    }
+
+    // Event delegation for Copy Code buttons
+    document.addEventListener('click', (e) => {
+      if (e.target.classList.contains('copy-code-btn')) {
+        const decoded = decodeURIComponent(e.target.getAttribute('data-code') || '');
+        copyTextToClipboard(decoded);
+        e.target.textContent = 'Copied!';
+        setTimeout(() => { e.target.textContent = 'Copy'; }, 1500);
+      }
+    });
+
+    function renderActiveChat() {
+      const chat = getActiveChat();
+      const container = document.getElementById('messages-container');
+      const welcome = document.getElementById('welcome-screen');
+
+      if (!chat || chat.messages.length === 0) {
+        container.innerHTML = '';
+        container.appendChild(welcome);
+        welcome.classList.remove('hidden');
+        return;
+      }
+
+      welcome.classList.add('hidden');
+      container.innerHTML = chat.messages.map(msg => buildMessageHtml(msg)).join('');
+      scrollToBottom();
+    }
+
+    function updateStreamingMessageDom(msg) {
+      const msgEl = document.getElementById(msg.id);
+      if (!msgEl) return;
+
+      const reasoningEl = msgEl.querySelector('.reasoning-body');
+      const reasoningWrapper = msgEl.querySelector('.reasoning-wrapper');
+      if (msg.reasoning && reasoningEl && reasoningWrapper) {
+        reasoningWrapper.classList.remove('hidden');
+        reasoningEl.textContent = msg.reasoning;
+      }
+
+      const contentEl = msgEl.querySelector('.assistant-content');
+      if (contentEl) {
+        contentEl.innerHTML = msg.content
+          ? renderMarkdownWithCopyButtons(msg.content)
+          : '<div class="flex gap-1.5 py-1"><span class="typing-dot w-2 h-2 rounded-full bg-brand-500"></span><span class="typing-dot w-2 h-2 rounded-full bg-brand-500"></span><span class="typing-dot w-2 h-2 rounded-full bg-brand-500"></span></div>';
+      }
+      scrollToBottom();
+    }
+
+    function buildMessageHtml(msg) {
+      if (msg.role === 'user') {
+        const imagesHtml = (msg.images && msg.images.length > 0)
+          ? `<div class="flex flex-wrap gap-2 mb-2">${msg.images.map(img => `<img src="${img.dataUrl}" class="max-h-48 rounded-xl border border-white/20" />`).join('')}</div>`
+          : '';
+        return `
+          <div id="${msg.id}" class="max-w-4xl mx-auto flex justify-end">
+            <div class="max-w-[85%] sm:max-w-[75%] rounded-2xl rounded-tr-sm px-4 py-3 bg-brand-600 text-white shadow-sm">
+              ${imagesHtml}
+              <div class="text-sm whitespace-pre-wrap leading-relaxed">${escapeHtml(msg.content)}</div>
+            </div>
+          </div>
+        `;
+      }
+
+      // Assistant Message
+      const hasReasoning = Boolean(msg.reasoning && msg.reasoning.trim());
+      const contentHtml = msg.error
+        ? `<div class="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 text-xs font-mono">Error: ${escapeHtml(msg.error)}</div>`
+        : (msg.content
+            ? renderMarkdownWithCopyButtons(msg.content)
+            : '<div class="flex gap-1.5 py-1"><span class="typing-dot w-2 h-2 rounded-full bg-brand-500"></span><span class="typing-dot w-2 h-2 rounded-full bg-brand-500"></span><span class="typing-dot w-2 h-2 rounded-full bg-brand-500"></span></div>');
+
+      // Telemetry Footer Pill
+      let telemetryHtml = '';
+      if (msg.usage) {
+        const u = msg.usage;
+        const promptTok = u.prompt_tokens || 0;
+        const hitTok = u.prompt_cache_hit_tokens ?? 0;
+        const missTok = u.prompt_cache_miss_tokens ?? Math.max(0, promptTok - hitTok);
+        const compTok = u.completion_tokens || 0;
+        const reasTok = u.completion_tokens_details?.reasoning_tokens || 0;
+        const hitPct = promptTok > 0 ? Math.round((hitTok / promptTok) * 100) : 0;
+
+        telemetryHtml = `
+          <div class="mt-3 pt-2.5 border-t border-slate-200/80 dark:border-slate-800 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-mono text-slate-500 dark:text-slate-400">
+            <span class="text-slate-700 dark:text-slate-300 font-semibold">${escapeHtml(msg.model)}</span>
+            <span title="Input Tokens (Cache Hit / Cache Miss)">In: <b>${promptTok.toLocaleString()}</b> (${hitTok.toLocaleString()} hit [${hitPct}%] / ${missTok.toLocaleString()} miss)</span>
+            <span title="Output Tokens">Out: <b>${compTok.toLocaleString()}</b>${reasTok ? ` (${reasTok.toLocaleString()} reasoning)` : ''}</span>
+            <span title="Time to First Token / Total Duration / Speed">⏱ TTFT ${msg.metrics.ttftMs}ms • ${(msg.metrics.totalMs / 1000).toFixed(2)}s (${msg.metrics.tokensPerSec} tok/s)</span>
+            <span class="text-emerald-600 dark:text-emerald-400 font-semibold">Est: $${(msg.costUsd || 0).toFixed(5)}</span>
+            <button onclick="copyMessageText('${msg.id}')" class="ml-auto hover:text-brand-500 transition">Copy Reply</button>
+          </div>
+        `;
+      }
+
+      return `
+        <div id="${msg.id}" class="max-w-4xl mx-auto flex gap-3">
+          <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex-shrink-0 flex items-center justify-center text-white text-xs font-bold mt-0.5">
+            DS
+          </div>
+          <div class="flex-1 min-w-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl rounded-tl-sm px-4 py-3.5 shadow-sm">
+            <!-- Collapsible Chain of Thought / Reasoning Block -->
+            <details class="reasoning-wrapper ${hasReasoning ? '' : 'hidden'} mb-3 rounded-xl bg-slate-100/80 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 overflow-hidden" open>
+              <summary class="px-3 py-2 text-xs font-semibold text-indigo-600 dark:text-indigo-400 cursor-pointer select-none flex items-center justify-between">
+                <span>💭 Chain of Thought / Reasoning Process</span>
+                <span class="text-[10px] font-mono text-slate-400">Toggle</span>
+              </summary>
+              <div class="reasoning-body px-3.5 py-2.5 text-xs font-mono text-slate-600 dark:text-slate-400 whitespace-pre-wrap border-t border-slate-200/70 dark:border-slate-800 max-h-80 overflow-y-auto">${escapeHtml(msg.reasoning || '')}</div>
+            </details>
+
+            <!-- Main Markdown Response -->
+            <div class="assistant-content prose-custom text-sm text-slate-800 dark:text-slate-100 overflow-x-auto">
+              ${contentHtml}
+            </div>
+
+            ${telemetryHtml}
+          </div>
+        </div>
+      `;
+    }
+
+    function copyMessageText(msgId) {
+      const chat = getActiveChat();
+      const msg = chat?.messages.find(m => m.id === msgId);
+      if (msg && msg.content) {
+        copyTextToClipboard(msg.content);
+        showToast('Response copied to clipboard.', 'success');
+      }
+    }
+
+    function scrollToBottom() {
+      const container = document.getElementById('messages-container');
+      container.scrollTop = container.scrollHeight;
+    }
+
+    /*************************************************************************
+     * 8. TELEMETRY LEDGER, SETTINGS MODAL & EXPORT/IMPORT
+     *************************************************************************/
+    function updateTelemetryDisplays() {
+      const chat = getActiveChat();
+      let chatTokens = 0;
+      let chatCost = 0;
+
+      if (chat) {
+        chat.messages.forEach(m => {
+          if (m.usage) {
+            chatTokens += (m.usage.prompt_tokens || 0) + (m.usage.completion_tokens || 0);
+            chatCost += (m.costUsd || 0);
+          }
+        });
+      }
+
+      document.getElementById('chat-total-tokens').textContent = chatTokens.toLocaleString();
+      document.getElementById('chat-total-cost').textContent = `$${chatCost.toFixed(5)}`;
+      document.getElementById('sidebar-lifetime-cost').textContent = `$${(state.lifetimeStats.totalCostUsd || 0).toFixed(5)}`;
+
+      // Modal Lifetime Breakdown
+      const s = state.lifetimeStats;
+      document.getElementById('lifetime-stats-box').innerHTML = `
+        <div class="p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+          <div class="text-[10px] text-slate-400">Input (Hit/Miss)</div>
+          <div class="font-semibold">${s.promptTokens.toLocaleString()}</div>
+          <div class="text-[10px] text-emerald-500">${s.cacheHitTokens.toLocaleString()} hit</div>
+        </div>
+        <div class="p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+          <div class="text-[10px] text-slate-400">Output Tokens</div>
+          <div class="font-semibold">${s.completionTokens.toLocaleString()}</div>
+          <div class="text-[10px] text-indigo-400">${s.reasoningTokens.toLocaleString()} reas.</div>
+        </div>
+        <div class="p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+          <div class="text-[10px] text-slate-400">Saved Chats</div>
+          <div class="font-semibold">${state.chats.length}</div>
+        </div>
+        <div class="p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+          <div class="text-[10px] text-slate-400">Est. Total Cost</div>
+          <div class="font-semibold text-emerald-500">$${s.totalCostUsd.toFixed(5)}</div>
+        </div>
+      `;
+    }
+
+    function openSettingsModal() {
+      syncControlsFromState();
+      updateTelemetryDisplays();
+      const modal = document.getElementById('settings-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeSettingsModal() {
+      const modal = document.getElementById('settings-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function toggleKeyVisibility() {
+      const input = document.getElementById('modal-api-key');
+      input.type = input.type === 'password' ? 'text' : 'password';
+    }
+
+    function saveSettingsFromModal() {
+      state.apiKey = document.getElementById('modal-api-key').value.trim();
+      state.baseUrl = document.getElementById('setting-base-url').value.trim() || 'https://api.deepseek.com';
+      state.customModel = document.getElementById('setting-custom-model').value.trim();
+      state.systemPrompt = document.getElementById('setting-system-prompt').value;
+      state.temperature = parseFloat(document.getElementById('setting-temperature').value) || 1.0;
+      state.maxTokens = parseInt(document.getElementById('setting-max-tokens').value, 10) || 16384;
+      state.rateMode = document.getElementById('setting-rate-mode').value;
+
+      document.getElementById('sidebar-api-key').value = state.apiKey;
+      updateKeyStatusBadge();
+      updatePricingWindowBadge();
+      onModelChange(false);
+      saveWorkspaceState();
+      closeSettingsModal();
+      showToast('Settings saved strictly in localStorage.', 'success');
+    }
+
+    function resetLifetimeStats() {
+      state.lifetimeStats = {
+        promptTokens: 0,
+        cacheHitTokens: 0,
+        cacheMissTokens: 0,
+        completionTokens: 0,
+        reasoningTokens: 0,
+        totalCostUsd: 0
+      };
+      saveWorkspaceState();
+      updateTelemetryDisplays();
+      showToast('Lifetime usage counters reset.', 'info');
+    }
+
+    function exportLocalBackup() {
+      const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `deepseek-v4-local-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('Exported local workspace JSON.', 'success');
+    }
+
+    function importLocalBackup(event) {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const imported = JSON.parse(reader.result);
+          state = { ...state, ...imported };
+          saveWorkspaceState();
+          syncControlsFromState();
+          renderChatList();
+          renderActiveChat();
+          updateTelemetryDisplays();
+          showToast('Workspace imported successfully.', 'success');
+        } catch (err) {
+          showToast('Invalid JSON backup file.', 'error');
+        }
+      };
+      reader.readAsText(file);
+      event.target.value = '';
+    }
+
+    function downloadStandaloneApp() {
+      const htmlContent = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+      const blob = new Blob([htmlContent], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'deepseek-v4-studio.html';
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('Downloaded standalone HTML file.', 'success');
+    }
+
+    function confirmWipeAllData() {
+      showCustomConfirm(
+        'Wipe All Local Data?',
+        'This will permanently delete your stored DeepSeek API key, all chat conversations, and usage counters from this browser. Nothing is stored on any server.',
+        () => {
+          localStorage.removeItem(STORAGE_KEY);
+          location.reload();
+        }
+      );
+    }
+
+    /*************************************************************************
+     * 9. UI UTILITIES (THEME, SIDEBAR, TOASTS, CLIPBOARD)
+     *************************************************************************/
+    function toggleTheme() {
+      state.theme = state.theme === 'dark' ? 'light' : 'dark';
+      applyTheme(state.theme);
+      saveWorkspaceState();
+    }
+
+    function applyTheme(theme) {
+      const html = document.documentElement;
+      const icon = document.getElementById('theme-icon');
+      const hljsLink = document.getElementById('hljs-theme');
+      if (theme === 'dark') {
+        html.classList.add('dark');
+        icon.textContent = '☀';
+        hljsLink.href = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css';
+      } else {
+        html.classList.remove('dark');
+        icon.textContent = '☾';
+        hljsLink.href = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css';
+      }
+    }
+
+    function toggleSidebar(open) {
+      const sidebar = document.getElementById('sidebar');
+      const backdrop = document.getElementById('sidebar-backdrop');
+      if (open) {
+        sidebar.classList.remove('-translate-x-full');
+        backdrop.classList.remove('hidden');
+      } else {
+        sidebar.classList.add('-translate-x-full');
+        backdrop.classList.add('hidden');
+      }
+    }
+
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      const colors = {
+        success: 'bg-emerald-600 text-white',
+        error: 'bg-red-600 text-white',
+        info: 'bg-slate-800 text-white dark:bg-slate-700'
+      };
+      toast.className = `pointer-events-auto px-4 py-2.5 rounded-xl text-xs font-medium shadow-lg transition-opacity duration-300 ${colors[type] || colors.info}`;
+      toast.textContent = message;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+      }, 3200);
+    }
+
+    function showCustomConfirm(title, message, onConfirm) {
+      const modal = document.getElementById('confirm-modal');
+      document.getElementById('confirm-title').textContent = title;
+      document.getElementById('confirm-message').textContent = message;
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+
+      const okBtn = document.getElementById('confirm-ok-btn');
+      const cancelBtn = document.getElementById('confirm-cancel-btn');
+
+      const cleanup = () => {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      };
+
+      okBtn.onclick = () => { cleanup(); onConfirm(); };
+      cancelBtn.onclick = cleanup;
+    }
+
+    function copyTextToClipboard(text) {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      try {
+        document.execCommand('copy');
+      } catch (err) {
+        console.error('Copy failed:', err);
+      }
+      document.body.removeChild(textarea);
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+  </script>
+</body>
+</html>
